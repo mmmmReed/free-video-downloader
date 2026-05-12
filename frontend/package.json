@@ -12,6 +12,9 @@
     "@tailwindcss/vite": "^4.3.0",
     "axios": "^1.16.0",
     "lucide-vue-next": "^1.0.0",
+    "marked": "^18.0.3",
+    "markmap-lib": "^0.18.12",
+    "markmap-view": "^0.18.12",
     "tailwindcss": "^4.3.0",
     "vue": "^3.5.32"
   },

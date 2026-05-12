@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useVideoDownload } from '../composables/useVideoDownload'
+import { useVideoSummary } from '../composables/useVideoSummary'
 import Header from '../components/Header.vue'
 import HeroSection from '../components/HeroSection.vue'
 import VideoResult from '../components/VideoResult.vue'
+import SummaryPanel from '../components/SummaryPanel.vue'
 import Features from '../components/Features.vue'
 import Platforms from '../components/Platforms.vue'
 import HowItWorks from '../components/HowItWorks.vue'
@@ -24,15 +26,54 @@ const {
   reset,
 } = useVideoDownload()
 
+const {
+  subtitleData,
+  subtitleLoading,
+  subtitleError,
+  summaryContent,
+  summaryLoading,
+  summaryError,
+  summaryDone,
+  chatMessages,
+  chatLoading,
+  chatError,
+  activeTab,
+  hasSubtitle,
+  loadSubtitle,
+  startSummarize,
+  sendChatMessage,
+  resetSummary,
+} = useVideoSummary()
+
 const currentUrl = ref('')
+const showSummary = ref(false)
 
 function handleParse(url: string) {
   currentUrl.value = url
+  showSummary.value = false
+  resetSummary()
   parse(url)
 }
 
 function handleDownload() {
   download(currentUrl.value)
+}
+
+async function handleSummarize() {
+  showSummary.value = true
+  await loadSubtitle(currentUrl.value)
+  startSummarize(
+    currentUrl.value,
+    videoInfo.value?.title || ''
+  )
+}
+
+function handleChatSend(question: string) {
+  sendChatMessage(
+    subtitleData.value?.full_text || '',
+    videoInfo.value?.title || '',
+    question
+  )
 }
 </script>
 
@@ -60,10 +101,30 @@ function handleDownload() {
         :is-downloading="isDownloading"
         :is-finished="isFinished"
         :error="error"
+        :summary-loading="subtitleLoading || summaryLoading"
         @update:selected-format="(f) => (selectedFormat = f)"
         @download="handleDownload"
         @download-file="downloadFile"
         @reset="reset"
+        @summarize="handleSummarize"
+      />
+
+      <SummaryPanel
+        v-if="showSummary"
+        :active-tab="activeTab"
+        :subtitle-data="subtitleData"
+        :subtitle-loading="subtitleLoading"
+        :subtitle-error="subtitleError"
+        :summary-content="summaryContent"
+        :summary-loading="summaryLoading"
+        :summary-error="summaryError"
+        :summary-done="summaryDone"
+        :chat-messages="chatMessages"
+        :chat-loading="chatLoading"
+        :chat-error="chatError"
+        :has-subtitle="hasSubtitle"
+        @update:active-tab="(t) => (activeTab = t)"
+        @chat:send="handleChatSend"
       />
 
       <Features />

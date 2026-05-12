@@ -1,7 +1,11 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers.video import router as video_router
+from routers.summary import router as summary_router
 
 app = FastAPI(
     title="Free Video Downloader API",
@@ -18,6 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(video_router)
+app.include_router(summary_router)
 
 
 @app.get("/")

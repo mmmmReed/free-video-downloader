@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Clock, User, Download, Check, Loader2, AlertCircle } from 'lucide-vue-next'
+import { Clock, User, Download, Check, Loader2, AlertCircle, Sparkles } from 'lucide-vue-next'
 import type { VideoInfo, VideoFormat, ProgressData } from '../types/video'
 
 const props = defineProps<{
@@ -10,6 +10,7 @@ const props = defineProps<{
   isDownloading: boolean
   isFinished: boolean
   error: string
+  summaryLoading?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -17,6 +18,7 @@ const emit = defineEmits<{
   download: []
   downloadFile: []
   reset: []
+  summarize: []
 }>()
 
 function formatDuration(seconds: number): string {
@@ -137,6 +139,15 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
             保存到本地
           </button>
           <button
+            @click="emit('summarize')"
+            :disabled="summaryLoading"
+            class="px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white font-medium rounded-xl hover:from-violet-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md shadow-purple-200/50"
+          >
+            <Loader2 v-if="summaryLoading" class="w-4 h-4 animate-spin" />
+            <Sparkles v-else class="w-4 h-4" />
+            AI 总结
+          </button>
+          <button
             @click="emit('reset')"
             class="px-6 py-3 bg-gray-100 text-text-secondary font-medium rounded-xl hover:bg-gray-200 transition-colors"
           >
@@ -152,6 +163,15 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
             <Loader2 v-if="isDownloading" class="w-5 h-5 animate-spin" />
             <Download v-else class="w-5 h-5" />
             {{ isDownloading ? '下载中...' : '开始下载' }}
+          </button>
+          <button
+            @click="emit('summarize')"
+            :disabled="summaryLoading"
+            class="px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white font-medium rounded-xl hover:from-violet-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md shadow-purple-200/50"
+          >
+            <Loader2 v-if="summaryLoading" class="w-4 h-4 animate-spin" />
+            <Sparkles v-else class="w-4 h-4" />
+            AI 总结
           </button>
         </template>
       </div>
