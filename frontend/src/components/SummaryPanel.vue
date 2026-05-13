@@ -8,6 +8,7 @@ import type { SubtitleData, ChatMessage } from '../types/summary'
 
 const props = defineProps<{
   activeTab: 'summary' | 'subtitle' | 'mindmap' | 'chat'
+  videoTitle?: string
   subtitleData: SubtitleData | null
   subtitleLoading: boolean
   subtitleError: string
@@ -44,10 +45,10 @@ const tabs = [
           :key="tab.id"
           @click="emit('update:activeTab', tab.id)"
           :class="[
-            'flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-all border-b-2 -mb-px',
+            'flex items-center gap-2 px-5 py-3.5 text-sm font-medium cursor-pointer transition-all border-b-2 -mb-px rounded-t-lg',
             activeTab === tab.id
-              ? 'border-primary text-primary'
-              : 'border-transparent text-text-secondary hover:text-text hover:border-gray-200',
+              ? 'border-primary text-primary bg-white'
+              : 'border-transparent text-text-secondary hover:text-text hover:border-gray-200 hover:bg-gray-50/80',
           ]"
         >
           <component :is="tab.icon" class="w-4 h-4" />
@@ -55,10 +56,16 @@ const tabs = [
         </button>
       </div>
 
-      <!-- Tab Content -->
-      <div class="p-6 min-h-[300px] max-h-[600px] flex flex-col">
+      <!-- Tab Content：思维导图需要更高可视区域 -->
+      <div
+        :class="[
+          'p-6 min-h-[300px] flex flex-col overflow-hidden',
+          activeTab === 'mindmap' ? 'max-h-[min(92vh,960px)]' : 'max-h-[600px]',
+        ]"
+      >
         <SummaryTab
           v-if="activeTab === 'summary'"
+          class="flex-1 min-h-0"
           :content="summaryContent"
           :loading="summaryLoading"
           :error="summaryError"
@@ -66,17 +73,21 @@ const tabs = [
         />
         <SubtitleTab
           v-else-if="activeTab === 'subtitle'"
+          class="flex-1 min-h-0"
+          :video-title="videoTitle"
           :data="subtitleData"
           :loading="subtitleLoading"
           :error="subtitleError"
         />
         <MindMapTab
           v-else-if="activeTab === 'mindmap'"
+          class="flex-1 min-h-0"
           :content="summaryContent"
           :loading="summaryLoading"
         />
         <ChatTab
           v-else-if="activeTab === 'chat'"
+          class="flex-1 min-h-0"
           :messages="chatMessages"
           :loading="chatLoading"
           :error="chatError"

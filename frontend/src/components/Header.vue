@@ -22,7 +22,7 @@ import { Download } from 'lucide-vue-next'
           <a href="#pricing" class="text-text-secondary hover:text-primary transition-colors text-sm font-medium">定价</a>
         </nav>
 
-        <button class="px-5 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors shadow-sm">
+        <button class="px-5 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark hover:shadow-md active:scale-[0.98] transition-all shadow-sm cursor-pointer">
           登录 / 注册
         </button>
       </div>

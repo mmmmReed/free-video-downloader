@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Copy, Check, Loader2 } from 'lucide-vue-next'
-import type { SubtitleData } from '../types/summary'
+import { Copy, Check, Loader2, Download } from 'lucide-vue-next'
+import type { SubtitleData, SubtitleSegment } from '../types/summary'
 
 const props = defineProps<{
   data: SubtitleData | null
   loading: boolean
   error: string
+  videoTitle?: string
 }>()
 
 const copied = ref(false)
@@ -25,6 +26,80 @@ const sourceLabel = computed(() => {
   if (props.data.source === 'auto') return '自动生成'
   return ''
 })
+
+function safeBaseName(raw: string): string {
+  const base = raw.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 80)
+  return base || 'subtitle'
+}
+
+const downloadBase = computed(() => {
+  const lang = props.data?.language ? `_${props.data.language}` : ''
+  return `${safeBaseName(props.videoTitle || '')}${lang}`
+})
+
+function formatSrtTime(seconds: number): string {
+  const totalMs = Math.max(0, Math.round(Number(seconds) * 1000))
+  const ms = totalMs % 1000
+  let t = Math.floor(totalMs / 1000)
+  const s = t % 60
+  t = Math.floor(t / 60)
+  const m = t % 60
+  const h = Math.floor(t / 60)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`
+}
+
+function formatVttTime(seconds: number): string {
+  const totalMs = Math.max(0, Math.round(Number(seconds) * 1000))
+  const ms = totalMs % 1000
+  let t = Math.floor(totalMs / 1000)
+  const s = t % 60
+  t = Math.floor(t / 60)
+  const m = t % 60
+  const h = Math.floor(t / 60)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`
+}
+
+function buildSrt(segments: SubtitleSegment[]): string {
+  return segments
+    .map((seg, i) => {
+      const text = seg.text.trim()
+      return `${i + 1}\n${formatSrtTime(seg.start)} --> ${formatSrtTime(seg.end)}\n${text}`
+    })
+    .join('\n\n')
+}
+
+function buildVtt(segments: SubtitleSegment[]): string {
+  const body = segments
+    .map((seg) => `${formatVttTime(seg.start)} --> ${formatVttTime(seg.end)}\n${seg.text.trim()}`)
+    .join('\n\n')
+  return `WEBVTT\n\n${body}\n`
+}
+
+function downloadTextFile(text: string, filename: string, mime: string) {
+  const blob = new Blob([text], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function downloadSrt() {
+  if (!props.data?.segments.length) return
+  downloadTextFile(buildSrt(props.data.segments), `${downloadBase.value}.srt`, 'text/plain;charset=utf-8')
+}
+
+function downloadVtt() {
+  if (!props.data?.segments.length) return
+  downloadTextFile(buildVtt(props.data.segments), `${downloadBase.value}.vtt`, 'text/plain;charset=utf-8')
+}
+
+function downloadTxt() {
+  if (!props.data?.full_text) return
+  const text = `\uFEFF${props.data.full_text}`
+  downloadTextFile(text, `${downloadBase.value}.txt`, 'text/plain;charset=utf-8')
+}
 
 async function copyAll() {
   if (!props.data?.full_text) return
@@ -59,20 +134,47 @@ async function copyAll() {
     <!-- Subtitle List -->
     <div v-else-if="data" class="flex flex-col h-full">
       <!-- Header -->
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2 text-xs text-text-secondary">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
+        <div class="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
           <span v-if="sourceLabel" class="px-2 py-0.5 bg-blue-50 text-primary rounded-full">{{ sourceLabel }}</span>
           <span v-if="data.language">语言: {{ data.language }}</span>
           <span>共 {{ data.segments.length }} 条</span>
         </div>
-        <button
-          @click="copyAll"
-          class="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-        >
-          <Check v-if="copied" class="w-3.5 h-3.5 text-green-500" />
-          <Copy v-else class="w-3.5 h-3.5" />
-          {{ copied ? '已复制' : '全部复制' }}
-        </button>
+        <div class="flex flex-wrap items-center gap-2 justify-end">
+          <button
+            type="button"
+            @click="downloadSrt"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-gray-100 hover:bg-gray-200 hover:shadow-sm active:scale-[0.98] rounded-lg transition-all cursor-pointer"
+          >
+            <Download class="w-3.5 h-3.5" />
+            SRT
+          </button>
+          <button
+            type="button"
+            @click="downloadVtt"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-gray-100 hover:bg-gray-200 hover:shadow-sm active:scale-[0.98] rounded-lg transition-all cursor-pointer"
+          >
+            <Download class="w-3.5 h-3.5" />
+            VTT
+          </button>
+          <button
+            type="button"
+            @click="downloadTxt"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-gray-100 hover:bg-gray-200 hover:shadow-sm active:scale-[0.98] rounded-lg transition-all cursor-pointer"
+          >
+            <Download class="w-3.5 h-3.5" />
+            纯文本
+          </button>
+          <button
+            type="button"
+            @click="copyAll"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary bg-gray-100 hover:bg-gray-200 hover:shadow-sm active:scale-[0.98] rounded-lg transition-all cursor-pointer"
+          >
+            <Check v-if="copied" class="w-3.5 h-3.5 text-green-500" />
+            <Copy v-else class="w-3.5 h-3.5" />
+            {{ copied ? '已复制' : '全部复制' }}
+          </button>
+        </div>
       </div>
 
       <!-- Segments -->

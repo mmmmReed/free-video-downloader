@@ -7,10 +7,16 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
-from services.subtitle import extract_subtitle
 from services.ai_summary import summarize_stream, chat_stream
 
 router = APIRouter(prefix="/api", tags=["summary"])
+
+
+def _extract_subtitle_fresh(url: str):
+    """延迟导入，避免 uvicorn --reload 只重载 subtitle 时仍命中旧函数引用。"""
+    from services.subtitle import extract_subtitle
+
+    return extract_subtitle(url)
 
 
 class SubtitleRequest(BaseModel):
@@ -40,7 +46,7 @@ async def get_subtitle(req: SubtitleRequest):
     """Extract subtitles from a video URL."""
     try:
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, extract_subtitle, req.url)
+        result = await loop.run_in_executor(None, _extract_subtitle_fresh, req.url)
         if result.get("error"):
             return {"success": False, "error": result["error"], "data": result}
         return {"success": True, "data": result}
@@ -57,7 +63,7 @@ async def summarize_video(req: SummarizeRequest):
         try:
             loop = asyncio.get_event_loop()
             sub_result = await loop.run_in_executor(
-                None, extract_subtitle, req.url
+                None, _extract_subtitle_fresh, req.url
             )
             subtitle_text = sub_result.get("full_text", "")
         except Exception as e:

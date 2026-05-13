@@ -77,10 +77,10 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
             :key="fmt.format_id"
             @click="emit('update:selectedFormat', fmt)"
             :class="[
-              'px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition-all',
+              'px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white',
               selectedFormat?.format_id === fmt.format_id
-                ? 'border-primary bg-blue-50 text-primary'
-                : 'border-gray-200 bg-white text-text-secondary hover:border-primary/40',
+                ? 'border-primary bg-blue-50 text-primary shadow-sm'
+                : 'border-gray-200 bg-white text-text-secondary hover:border-primary/50 hover:bg-blue-50/40 hover:shadow-sm',
             ]"
             :disabled="isDownloading"
           >
@@ -133,7 +133,7 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
         <template v-if="isFinished">
           <button
             @click="emit('downloadFile')"
-            class="flex-1 py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+            class="flex-1 py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 hover:shadow-md active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <Check class="w-5 h-5" />
             保存到本地
@@ -141,7 +141,7 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
           <button
             @click="emit('summarize')"
             :disabled="summaryLoading"
-            class="px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white font-medium rounded-xl hover:from-violet-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md shadow-purple-200/50"
+            class="px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white font-medium rounded-xl hover:from-violet-600 hover:to-purple-600 hover:shadow-lg hover:shadow-purple-200/40 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md flex items-center gap-2 shadow-md shadow-purple-200/50 cursor-pointer"
           >
             <Loader2 v-if="summaryLoading" class="w-4 h-4 animate-spin" />
             <Sparkles v-else class="w-4 h-4" />
@@ -149,7 +149,7 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
           </button>
           <button
             @click="emit('reset')"
-            class="px-6 py-3 bg-gray-100 text-text-secondary font-medium rounded-xl hover:bg-gray-200 transition-colors"
+            class="px-6 py-3 bg-gray-100 text-text-secondary font-medium rounded-xl hover:bg-gray-200 hover:shadow-sm active:scale-[0.98] transition-all cursor-pointer"
           >
             重新下载
           </button>
@@ -158,7 +158,7 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
           <button
             @click="emit('download')"
             :disabled="isDownloading || !selectedFormat"
-            class="flex-1 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-primary/20"
+            class="flex-1 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark hover:shadow-lg hover:shadow-primary/25 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md flex items-center justify-center gap-2 shadow-md shadow-primary/20 cursor-pointer"
           >
             <Loader2 v-if="isDownloading" class="w-5 h-5 animate-spin" />
             <Download v-else class="w-5 h-5" />
@@ -167,7 +167,7 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
           <button
             @click="emit('summarize')"
             :disabled="summaryLoading"
-            class="px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white font-medium rounded-xl hover:from-violet-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md shadow-purple-200/50"
+            class="px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white font-medium rounded-xl hover:from-violet-600 hover:to-purple-600 hover:shadow-lg hover:shadow-purple-200/40 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md flex items-center gap-2 shadow-md shadow-purple-200/50 cursor-pointer"
           >
             <Loader2 v-if="summaryLoading" class="w-4 h-4 animate-spin" />
             <Sparkles v-else class="w-4 h-4" />

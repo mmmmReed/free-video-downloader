@@ -57,9 +57,14 @@ DOWNLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "downlo
 
 
 def is_douyin_url(url: str) -> bool:
-    """Check whether a URL belongs to Douyin."""
+    """Check whether a URL belongs to Douyin (含无协议、短链、子域名等情况)。"""
+    if not url or not isinstance(url, str):
+        return False
+    low = url.strip().lower()
+    if "douyin.com" in low or "douyin.cn" in low or "iesdouyin.com" in low:
+        return True
     try:
-        host = urlparse(url).hostname or ""
+        host = (urlparse(low).hostname or "").lower()
         return host in _DOUYIN_HOSTS or "douyin.com" in host
     except Exception:
         return False

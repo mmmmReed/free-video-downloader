@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme {
   --color-primary: #3B82F6;
@@ -27,4 +28,19 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* Markdown 代码块与表格在浅色卡片内的对比度 */
+.summary-markdown.prose pre {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+.summary-markdown.prose table {
+  font-size: 0.9em;
+}
+
+.summary-markdown.prose thead {
+  border-bottom-width: 1px;
+  border-color: var(--color-border);
 }

@@ -102,10 +102,10 @@ const plans = [
 
           <button
             :class="[
-              'w-full py-3 font-semibold rounded-xl transition-all text-sm',
+              'w-full py-3 font-semibold rounded-xl transition-all text-sm cursor-pointer active:scale-[0.99]',
               plan.highlighted
                 ? 'bg-gradient-to-r from-gold to-gold-dark text-white hover:shadow-lg hover:shadow-gold/30'
-                : 'bg-gray-100 text-text-secondary hover:bg-gray-200',
+                : 'bg-gray-100 text-text-secondary hover:bg-gray-200 hover:shadow-sm',
             ]"
           >
             {{ plan.cta }}

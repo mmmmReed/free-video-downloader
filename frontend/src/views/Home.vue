@@ -112,6 +112,7 @@ function handleChatSend(question: string) {
       <SummaryPanel
         v-if="showSummary"
         :active-tab="activeTab"
+        :video-title="videoInfo?.title ?? ''"
         :subtitle-data="subtitleData"
         :subtitle-loading="subtitleLoading"
         :subtitle-error="subtitleError"

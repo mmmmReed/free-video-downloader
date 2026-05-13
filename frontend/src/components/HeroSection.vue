@@ -56,7 +56,7 @@ function handleSubmit() {
         <button
           type="submit"
           :disabled="loading || !url.trim()"
-          class="px-8 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md shadow-primary/20"
+          class="px-8 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark hover:shadow-lg hover:shadow-primary/30 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md flex items-center gap-2 shadow-md shadow-primary/20 cursor-pointer"
         >
           <Loader2 v-if="loading" class="w-5 h-5 animate-spin" />
           <span>{{ loading ? '解析中...' : '解析视频' }}</span>

@@ -40,6 +40,9 @@ npm-debug.log*
 Thumbs.db
 Desktop.ini
 
+# Git Bash / Windows shell 误写入的占位文件（如重定向 "> nul" 在仓库目录执行时生成）
+/nul
+
 # Env
 .env
 .env.*

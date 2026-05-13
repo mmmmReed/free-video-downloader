@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { marked } from 'marked'
 import { Send, Loader2, MessageCircle } from 'lucide-vue-next'
 import type { ChatMessage } from '../types/summary'
@@ -89,7 +89,7 @@ watch(
               v-for="q in quickQuestions"
               :key="q"
               @click="handleQuickQuestion(q)"
-              class="px-3 py-1.5 text-xs bg-blue-50 text-primary rounded-full hover:bg-blue-100 transition-colors"
+            class="px-3 py-1.5 text-xs bg-blue-50 text-primary rounded-full border border-transparent hover:bg-blue-100 hover:border-primary/20 hover:shadow-sm active:scale-[0.98] transition-all cursor-pointer"
             >
               {{ q }}
             </button>
@@ -144,7 +144,7 @@ watch(
         <button
           @click="handleSend"
           :disabled="!inputText.trim() || loading"
-          class="p-2.5 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="p-2.5 bg-primary text-white rounded-xl hover:bg-primary-dark hover:shadow-md active:scale-[0.95] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none cursor-pointer"
         >
           <Send class="w-4 h-4" />
         </button>
