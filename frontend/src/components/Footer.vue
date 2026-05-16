@@ -11,7 +11,7 @@ import { Download } from 'lucide-vue-next'
             <Download class="w-4 h-4 text-white" />
           </div>
           <span class="text-lg font-bold text-text">
-            <span class="text-primary">Free</span>Video
+            <span class="text-primary">free</span>Video
           </span>
         </div>
 
@@ -21,7 +21,7 @@ import { Download } from 'lucide-vue-next'
         </div>
 
         <div class="text-sm text-text-muted">
-          &copy; {{ new Date().getFullYear() }} FreeVideo
+          &copy; {{ new Date().getFullYear() }} freeVideo
         </div>
       </div>
     </div>

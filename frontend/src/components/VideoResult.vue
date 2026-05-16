@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Clock, User, Download, Check, Loader2, AlertCircle, Sparkles } from 'lucide-vue-next'
+import {
+  Clock,
+  User,
+  Download,
+  Check,
+  Loader2,
+  AlertCircle,
+  Sparkles,
+  SlidersHorizontal,
+  FileVideo,
+} from 'lucide-vue-next'
 import type { VideoInfo, VideoFormat, ProgressData } from '../types/video'
 
 const props = defineProps<{
@@ -11,6 +21,8 @@ const props = defineProps<{
   isFinished: boolean
   error: string
   summaryLoading?: boolean
+  /** 与总结面板并排时：独立圆角卡片、列表式选格式 */
+  split?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -41,8 +53,20 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
 </script>
 
 <template>
-  <section class="max-w-4xl mx-auto px-4 -mt-6 mb-16 relative z-10">
-    <div class="bg-white rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 overflow-hidden">
+  <section
+    :class="
+      props.split
+        ? 'min-w-0 h-full flex flex-col relative z-10'
+        : 'max-w-4xl mx-auto px-4 -mt-6 mb-16 relative z-10'
+    "
+  >
+    <div
+      :class="
+        props.split
+          ? 'flex flex-col flex-1 min-h-0 overflow-hidden bg-white rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100'
+          : 'bg-white rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 overflow-hidden'
+      "
+    >
       <!-- Video Info Header -->
       <div class="flex flex-col sm:flex-row gap-6 p-6">
         <div class="flex-shrink-0">
@@ -70,22 +94,37 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
 
       <!-- Format Selection -->
       <div class="px-6 pb-4">
-        <h4 class="text-sm font-semibold text-text-secondary mb-3">选择格式和清晰度</h4>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        <div class="flex items-center gap-2 mb-3">
+          <SlidersHorizontal class="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
+          <h4 class="text-sm font-semibold text-text">选择清晰度和格式</h4>
+        </div>
+        <div class="flex flex-col gap-2">
           <button
             v-for="fmt in videoInfo.formats"
             :key="fmt.format_id"
+            type="button"
             @click="emit('update:selectedFormat', fmt)"
             :class="[
-              'px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white',
+              'flex w-full items-start gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white',
               selectedFormat?.format_id === fmt.format_id
-                ? 'border-primary bg-blue-50 text-primary shadow-sm'
-                : 'border-gray-200 bg-white text-text-secondary hover:border-primary/50 hover:bg-blue-50/40 hover:shadow-sm',
+                ? 'border-primary bg-blue-50/90 shadow-sm'
+                : 'border-gray-100 bg-white hover:border-primary/40 hover:bg-blue-50/30',
             ]"
             :disabled="isDownloading"
           >
-            <div>{{ fmt.label }}</div>
-            <div class="text-xs mt-0.5 opacity-70">{{ formatSize(fmt.filesize) }}</div>
+            <span
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-primary"
+              aria-hidden="true"
+            >
+              <FileVideo class="w-5 h-5" />
+            </span>
+            <span class="min-w-0 flex-1 pt-0.5">
+              <span
+                class="block text-sm font-medium leading-snug"
+                :class="selectedFormat?.format_id === fmt.format_id ? 'text-primary' : 'text-text'"
+              >{{ fmt.label }}</span>
+              <span class="mt-0.5 block text-xs text-text-secondary">{{ formatSize(fmt.filesize) }}</span>
+            </span>
           </button>
         </div>
       </div>

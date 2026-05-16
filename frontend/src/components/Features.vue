@@ -30,7 +30,7 @@ const features = [
     <div class="max-w-7xl mx-auto px-4">
       <div class="text-center mb-14">
         <h2 class="text-3xl sm:text-4xl font-extrabold text-text mb-4">
-          为什么选择 <span class="text-primary">FreeVideo</span>
+          为什么选择 <span class="text-primary">free</span>Video
         </h2>
         <p class="text-text-secondary text-lg max-w-xl mx-auto">
           简单、快速、强大，让视频下载变得前所未有的简单

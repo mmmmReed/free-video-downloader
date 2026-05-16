@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { FileText, Subtitles, Brain, MessageCircle } from 'lucide-vue-next'
+import {
+  FileText,
+  Sparkles,
+  Subtitles,
+  Network,
+  MessageCircle,
+  AlertTriangle,
+} from 'lucide-vue-next'
 import SummaryTab from './SummaryTab.vue'
 import SubtitleTab from './SubtitleTab.vue'
 import MindMapTab from './MindMapTab.vue'
@@ -20,6 +27,10 @@ const props = defineProps<{
   chatLoading: boolean
   chatError: string
   hasSubtitle: boolean
+  /** 与 VideoResult 并排：独立圆角卡片 */
+  split?: boolean
+  /** 无有效字幕时提示总结质量可能下降 */
+  subtitleQualityHint?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -27,40 +38,109 @@ const emit = defineEmits<{
   'chat:send': [question: string]
 }>()
 
-const tabs = [
-  { id: 'summary' as const, label: '总结', icon: FileText },
-  { id: 'subtitle' as const, label: '字幕', icon: Subtitles },
-  { id: 'mindmap' as const, label: '思维导图', icon: Brain },
-  { id: 'chat' as const, label: 'AI 问答', icon: MessageCircle },
-]
+function tabBtnClass(id: 'summary' | 'subtitle' | 'mindmap' | 'chat') {
+  const active = props.activeTab === id
+  if (active && id === 'mindmap') {
+    return [
+      'flex items-center gap-2 px-4 sm:px-5 py-3.5 text-sm font-medium cursor-pointer transition-all border-b-2 -mb-px rounded-t-lg shrink-0',
+      'border-pink-500 text-pink-600 bg-white',
+    ]
+  }
+  if (active) {
+    return [
+      'flex items-center gap-2 px-4 sm:px-5 py-3.5 text-sm font-medium cursor-pointer transition-all border-b-2 -mb-px rounded-t-lg shrink-0',
+      'border-primary text-primary bg-white',
+    ]
+  }
+  return [
+    'flex items-center gap-2 px-4 sm:px-5 py-3.5 text-sm font-medium cursor-pointer transition-all border-b-2 -mb-px rounded-t-lg shrink-0',
+    'border-transparent text-text-secondary hover:text-text hover:border-gray-200 hover:bg-gray-50/80',
+  ]
+}
 </script>
 
 <template>
-  <section class="max-w-4xl mx-auto px-4 mb-16 relative z-10">
-    <div class="bg-white rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 overflow-hidden">
-      <!-- Tab Bar -->
-      <div class="flex border-b border-gray-100">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          @click="emit('update:activeTab', tab.id)"
-          :class="[
-            'flex items-center gap-2 px-5 py-3.5 text-sm font-medium cursor-pointer transition-all border-b-2 -mb-px rounded-t-lg',
-            activeTab === tab.id
-              ? 'border-primary text-primary bg-white'
-              : 'border-transparent text-text-secondary hover:text-text hover:border-gray-200 hover:bg-gray-50/80',
-          ]"
-        >
-          <component :is="tab.icon" class="w-4 h-4" />
-          {{ tab.label }}
+  <section
+    :class="
+      props.split
+        ? 'min-w-0 flex flex-col flex-1 min-h-0 h-full relative z-10'
+        : 'max-w-4xl mx-auto px-4 mb-16 relative z-10'
+    "
+  >
+    <div
+      :class="
+        props.split
+          ? 'flex flex-col flex-1 min-h-0 overflow-hidden bg-white rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100'
+          : 'bg-white rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 overflow-hidden'
+      "
+    >
+      <div
+        v-if="props.subtitleQualityHint"
+        class="flex gap-2.5 mx-4 mt-4 mb-1 px-3.5 py-3 rounded-xl text-sm text-amber-900 bg-amber-50 border border-amber-100/90"
+        role="status"
+      >
+        <AlertTriangle class="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
+        <p class="leading-relaxed">
+          当前未能获取到有效字幕或字幕内容为空，仍会尝试总结，但结果可能偏泛、不够贴合视频细节。若平台支持字幕，可稍后在「字幕文本」页查看是否可用。
+        </p>
+      </div>
+
+      <!-- Tab Bar：横向不足时可滑动；禁止纵向滚动条 -->
+      <div
+        class="flex flex-nowrap items-center border-b border-gray-100 flex-shrink-0 overflow-x-auto overflow-y-hidden"
+      >
+        <button type="button" :class="tabBtnClass('summary')" @click="emit('update:activeTab', 'summary')">
+          <span class="relative inline-flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden="true">
+            <FileText
+              class="h-4 w-4"
+              :class="activeTab === 'summary' ? 'text-primary' : 'text-text-secondary'"
+              stroke-width="2"
+            />
+            <Sparkles
+              class="absolute -right-1 -top-0.5 h-2.5 w-2.5 text-amber-500"
+              stroke-width="2.5"
+              aria-hidden="true"
+            />
+          </span>
+          总结摘要
+        </button>
+        <button type="button" :class="tabBtnClass('subtitle')" @click="emit('update:activeTab', 'subtitle')">
+          <Subtitles
+            class="h-4 w-4 shrink-0"
+            :class="activeTab === 'subtitle' ? 'text-primary' : 'text-text-secondary'"
+            stroke-width="2"
+          />
+          字幕文本
+        </button>
+        <button type="button" :class="tabBtnClass('mindmap')" @click="emit('update:activeTab', 'mindmap')">
+          <Network
+            class="h-4 w-4 shrink-0"
+            :class="activeTab === 'mindmap' ? 'text-pink-500' : 'text-text-secondary'"
+            stroke-width="2"
+          />
+          思维导图
+        </button>
+        <button type="button" :class="tabBtnClass('chat')" @click="emit('update:activeTab', 'chat')">
+          <MessageCircle
+            class="h-4 w-4 shrink-0"
+            :class="activeTab === 'chat' ? 'text-primary' : 'text-text-secondary'"
+            stroke-width="2"
+          />
+          AI 问答
         </button>
       </div>
 
       <!-- Tab Content：思维导图需要更高可视区域 -->
       <div
         :class="[
-          'p-6 min-h-[300px] flex flex-col overflow-hidden',
-          activeTab === 'mindmap' ? 'max-h-[min(92vh,960px)]' : 'max-h-[600px]',
+          'p-6 min-h-[300px] flex flex-col overflow-hidden flex-1 min-h-0',
+          activeTab === 'mindmap'
+            ? props.split
+              ? 'max-h-[min(85vh,880px)]'
+              : 'max-h-[min(92vh,960px)]'
+            : props.split
+              ? 'max-h-[min(70vh,560px)]'
+              : 'max-h-[600px]',
         ]"
       >
         <SummaryTab

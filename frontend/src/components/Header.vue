@@ -11,7 +11,7 @@ import { Download } from 'lucide-vue-next'
             <Download class="w-5 h-5 text-white" />
           </div>
           <span class="text-xl font-bold text-text">
-            <span class="text-primary">Free</span>Video
+            <span class="text-primary">free</span>Video
           </span>
         </div>
 

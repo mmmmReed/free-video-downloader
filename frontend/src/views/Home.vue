@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useVideoDownload } from '../composables/useVideoDownload'
 import { useVideoSummary } from '../composables/useVideoSummary'
 import Header from '../components/Header.vue'
@@ -46,26 +46,48 @@ const {
 } = useVideoSummary()
 
 const currentUrl = ref('')
-const showSummary = ref(false)
+/** 解析成功后是否自动拉字幕并总结（默认勾选，可取消本次） */
+const autoSummarizeAfterParse = ref(true)
+/** 无有效字幕时提示总结质量可能下降 */
+const subtitleQualityHint = ref(false)
 
 function handleParse(url: string) {
   currentUrl.value = url
-  showSummary.value = false
+  subtitleQualityHint.value = false
   resetSummary()
   parse(url)
 }
+
+async function runSummarizePipeline() {
+  const url = currentUrl.value
+  if (!url || !videoInfo.value) return
+
+  await loadSubtitle(url)
+  if (currentUrl.value !== url || !videoInfo.value) return
+
+  const text = subtitleData.value?.full_text?.trim() ?? ''
+  subtitleQualityHint.value =
+    !!subtitleError.value || !hasSubtitle.value || !text
+
+  startSummarize(url, videoInfo.value.title || '')
+}
+
+watch(
+  videoInfo,
+  async (vi) => {
+    if (!vi) return
+    if (!autoSummarizeAfterParse.value) return
+    await runSummarizePipeline()
+  },
+  { flush: 'post' }
+)
 
 function handleDownload() {
   download(currentUrl.value)
 }
 
 async function handleSummarize() {
-  showSummary.value = true
-  await loadSubtitle(currentUrl.value)
-  startSummarize(
-    currentUrl.value,
-    videoInfo.value?.title || ''
-  )
+  await runSummarizePipeline()
 }
 
 function handleChatSend(question: string) {
@@ -81,7 +103,11 @@ function handleChatSend(question: string) {
   <div class="min-h-screen bg-bg">
     <Header />
     <main>
-      <HeroSection :loading="loading" @parse="handleParse" />
+      <HeroSection
+        v-model:auto-summarize-after-parse="autoSummarizeAfterParse"
+        :loading="loading"
+        @parse="handleParse"
+      />
 
       <!-- Parse error shown when videoInfo is not yet available -->
       <div v-if="error && !videoInfo" class="max-w-2xl mx-auto px-4 -mt-4 mb-8 relative z-10">
@@ -93,40 +119,49 @@ function handleChatSend(question: string) {
         </div>
       </div>
 
-      <VideoResult
+      <section
         v-if="videoInfo"
-        :video-info="videoInfo"
-        :selected-format="selectedFormat"
-        :progress="progress"
-        :is-downloading="isDownloading"
-        :is-finished="isFinished"
-        :error="error"
-        :summary-loading="subtitleLoading || summaryLoading"
-        @update:selected-format="(f) => (selectedFormat = f)"
-        @download="handleDownload"
-        @download-file="downloadFile"
-        @reset="reset"
-        @summarize="handleSummarize"
-      />
-
-      <SummaryPanel
-        v-if="showSummary"
-        :active-tab="activeTab"
-        :video-title="videoInfo?.title ?? ''"
-        :subtitle-data="subtitleData"
-        :subtitle-loading="subtitleLoading"
-        :subtitle-error="subtitleError"
-        :summary-content="summaryContent"
-        :summary-loading="summaryLoading"
-        :summary-error="summaryError"
-        :summary-done="summaryDone"
-        :chat-messages="chatMessages"
-        :chat-loading="chatLoading"
-        :chat-error="chatError"
-        :has-subtitle="hasSubtitle"
-        @update:active-tab="(t) => (activeTab = t)"
-        @chat:send="handleChatSend"
-      />
+        class="max-w-7xl mx-auto px-4 mt-0 sm:mt-0.5 mb-14 relative z-10"
+      >
+        <div
+          class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)] gap-5 lg:gap-6 items-stretch lg:min-h-[min(480px,72vh)]"
+        >
+          <VideoResult
+            split
+            :video-info="videoInfo"
+            :selected-format="selectedFormat"
+            :progress="progress"
+            :is-downloading="isDownloading"
+            :is-finished="isFinished"
+            :error="error"
+            :summary-loading="subtitleLoading || summaryLoading"
+            @update:selected-format="(f) => (selectedFormat = f)"
+            @download="handleDownload"
+            @download-file="downloadFile"
+            @reset="reset"
+            @summarize="handleSummarize"
+          />
+          <SummaryPanel
+            split
+            :active-tab="activeTab"
+            :video-title="videoInfo?.title ?? ''"
+            :subtitle-data="subtitleData"
+            :subtitle-loading="subtitleLoading"
+            :subtitle-error="subtitleError"
+            :summary-content="summaryContent"
+            :summary-loading="summaryLoading"
+            :summary-error="summaryError"
+            :summary-done="summaryDone"
+            :chat-messages="chatMessages"
+            :chat-loading="chatLoading"
+            :chat-error="chatError"
+            :has-subtitle="hasSubtitle"
+            :subtitle-quality-hint="subtitleQualityHint"
+            @update:active-tab="(t) => (activeTab = t)"
+            @chat:send="handleChatSend"
+          />
+        </div>
+      </section>
 
       <Features />
       <Platforms />

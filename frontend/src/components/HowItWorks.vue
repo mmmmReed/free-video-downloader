@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { ClipboardPaste, ListChecks, Download } from 'lucide-vue-next'
+import {
+  ClipboardPaste,
+  ListChecks,
+  Download,
+  Sparkles,
+  Network,
+} from 'lucide-vue-next'
 
 const steps = [
   {
@@ -20,32 +26,52 @@ const steps = [
     title: '一键下载',
     desc: '点击下载按钮，等待下载完成后保存到本地',
   },
+  {
+    icon: Sparkles,
+    step: '04',
+    title: 'AI 总结分析',
+    desc: '可勾选「解析后自动总结」，一键生成总结摘要；支持查看字幕文本、与 AI 问答',
+  },
+  {
+    icon: Network,
+    step: '05',
+    title: '思维导图与导出',
+    desc: '根据总结生成思维导图，在导图页可导出 SVG 或高清 PNG，保存到本地随时查看',
+  },
 ]
 </script>
 
 <template>
   <section id="how-it-works" class="py-20 bg-white">
-    <div class="max-w-5xl mx-auto px-4">
+    <div class="max-w-7xl mx-auto px-4">
       <div class="text-center mb-14">
         <h2 class="text-3xl sm:text-4xl font-extrabold text-text mb-4">
-          只需 <span class="text-primary">三步</span>，轻松下载
+          只需 <span class="text-primary">五步</span>，下载与 AI 分析一次完成
         </h2>
-        <p class="text-text-secondary text-lg max-w-xl mx-auto">
-          无需安装任何软件，打开浏览器即可使用
+        <p class="text-text-secondary text-lg max-w-2xl mx-auto leading-relaxed">
+          无需安装任何软件，打开浏览器即可完成高清下载、智能总结、思维导图导出
         </p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 lg:gap-5"
+      >
         <div
           v-for="(item, idx) in steps"
           :key="idx"
-          class="relative text-center p-8 bg-bg rounded-2xl border border-gray-100"
+          class="relative text-center p-7 sm:p-8 bg-bg rounded-2xl border border-gray-100 min-h-0"
         >
-          <div class="text-5xl font-black text-primary/10 absolute top-4 right-6">{{ item.step }}</div>
-          <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <component :is="item.icon" class="w-8 h-8 text-primary" />
+          <div class="text-5xl font-black text-primary/10 absolute top-4 right-5 sm:right-6">
+            {{ item.step }}
           </div>
-          <h3 class="text-xl font-bold text-text mb-2">{{ item.title }}</h3>
+          <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <component
+              :is="item.icon"
+              class="w-8 h-8"
+              :class="item.step === '05' ? 'text-pink-500' : 'text-primary'"
+            />
+          </div>
+          <h3 class="text-lg sm:text-xl font-bold text-text mb-2">{{ item.title }}</h3>
           <p class="text-sm text-text-secondary leading-relaxed">{{ item.desc }}</p>
         </div>
       </div>

@@ -94,8 +94,10 @@ async function copyContent() {
     </div>
 
     <!-- Empty State -->
-    <div v-else class="flex flex-col items-center justify-center py-16 text-text-secondary">
-      <p class="text-sm">点击上方"AI 总结"按钮开始分析视频</p>
+    <div v-else class="flex flex-col items-center justify-center py-16 text-text-secondary px-4 text-center">
+      <p class="text-sm leading-relaxed">
+        点击左侧「AI 总结」开始分析；若已勾选「解析后自动总结」，解析成功后会自动在「总结摘要」中开始。
+      </p>
     </div>
   </div>
 </template>
