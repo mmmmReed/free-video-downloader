@@ -31,6 +31,8 @@ const props = defineProps<{
   split?: boolean
   /** 无有效字幕时提示总结质量可能下降 */
   subtitleQualityHint?: boolean
+  /** 后端返回的详细说明（如抖音仅文案兜底） */
+  subtitleQualityNotice?: string
 }>()
 
 const emit = defineEmits<{
@@ -75,14 +77,17 @@ function tabBtnClass(id: 'summary' | 'subtitle' | 'mindmap' | 'chat') {
       "
     >
       <div
-        v-if="props.subtitleQualityHint"
+        v-if="props.subtitleQualityHint || props.subtitleQualityNotice"
         class="flex gap-2.5 mx-4 mt-4 mb-1 px-3.5 py-3 rounded-xl text-sm text-amber-900 bg-amber-50 border border-amber-100/90"
         role="status"
       >
         <AlertTriangle class="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
-        <p class="leading-relaxed">
-          当前未能获取到有效字幕或字幕内容为空，仍会尝试总结，但结果可能偏泛、不够贴合视频细节。若平台支持字幕，可稍后在「字幕文本」页查看是否可用。
-        </p>
+        <div class="leading-relaxed space-y-2">
+          <p v-if="props.subtitleQualityNotice">{{ props.subtitleQualityNotice }}</p>
+          <p v-if="props.subtitleQualityHint">
+            当前未能获取到足够完整的字幕时，总结可能偏泛、不够贴合视频细节。若平台支持字幕，请在「字幕文本」页核对实际内容。
+          </p>
+        </div>
       </div>
 
       <!-- Tab Bar：横向不足时可滑动；禁止纵向滚动条 -->

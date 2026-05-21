@@ -81,7 +81,7 @@ function handleSubmit() {
       </label>
 
       <p class="mt-2.5 text-sm text-text-muted mb-2.5 sm:mb-3">
-        免费使用 · 无需注册 · 支持手机
+          下载解析免费 · AI 总结需登录（免费每日 1 次 / VIP ¥9.9·30 天）· 支持手机
       </p>
     </div>
   </section>

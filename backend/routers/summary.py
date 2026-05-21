@@ -3,10 +3,11 @@
 import asyncio
 import json
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
+from deps.auth import check_summary_quota
 from services.ai_summary import summarize_stream, chat_stream
 
 router = APIRouter(prefix="/api", tags=["summary"])
@@ -55,7 +56,10 @@ async def get_subtitle(req: SubtitleRequest):
 
 
 @router.post("/summarize")
-async def summarize_video(req: SummarizeRequest):
+async def summarize_video(
+    req: SummarizeRequest,
+    _quota: dict = Depends(check_summary_quota),
+):
     """Generate AI summary of video content via SSE streaming."""
     subtitle_text = req.subtitle_text
 
@@ -109,7 +113,10 @@ async def summarize_video(req: SummarizeRequest):
 
 
 @router.post("/chat")
-async def chat_with_video(req: ChatRequest):
+async def chat_with_video(
+    req: ChatRequest,
+    _quota: dict = Depends(check_summary_quota),
+):
     """AI Q&A about video content via SSE streaming."""
     if not req.subtitle_text:
         raise HTTPException(status_code=400, detail="缺少字幕内容")

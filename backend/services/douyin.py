@@ -214,6 +214,144 @@ def _fetch_item_info(session: requests.Session, video_id: str) -> dict:
     return _fetch_from_share_page(session, video_id)
 
 
+def _coerce_non_negative_int(v) -> int | None:
+    """将接口里的播放量/点赞等字段转为非负整数；无法解析则返回 None。"""
+    if v is None or v is False:
+        return None
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, int):
+        return v if v >= 0 else None
+    if isinstance(v, float):
+        if v != v or v < 0:
+            return None
+        return int(v)
+    if isinstance(v, str):
+        s = v.strip().replace(",", "").replace(" ", "")
+        if not s:
+            return None
+        try:
+            x = float(s)
+            if x < 0:
+                return None
+            return int(x)
+        except ValueError:
+            return None
+    return None
+
+
+def _stats_dict(item: dict) -> dict | None:
+    st = item.get("statistics") or item.get("Statistics")
+    if isinstance(st, dict):
+        return st
+    return None
+
+
+def _douyin_stat_pick_positive(stats: dict | None, *keys: str) -> int | None:
+    if not stats:
+        return None
+    for k in keys:
+        n = _coerce_non_negative_int(stats.get(k))
+        if n is not None and n > 0:
+            return n
+    return None
+
+
+def _douyin_view_count(item: dict) -> int | None:
+    """从 statistics（及备用嵌套）读取播放量；公开接口常省略或为 0，此时交由点赞兜底展示。"""
+    for stats in (_stats_dict(item),):
+        n = _douyin_stat_pick_positive(
+            stats,
+            "play_count",
+            "playCount",
+            "aweme_play_count",
+            "awemePlayCount",
+            "read_count",
+            "readCount",
+        )
+        if n is not None:
+            return n
+
+    video = item.get("video")
+    if isinstance(video, dict):
+        st2 = video.get("statistics") or video.get("Statistics")
+        if isinstance(st2, dict):
+            n = _douyin_stat_pick_positive(
+                st2, "play_count", "playCount", "aweme_play_count", "awemePlayCount"
+            )
+            if n is not None:
+                return n
+
+    return None
+
+
+def _douyin_like_count(item: dict) -> int | None:
+    """点赞数；在播放量缺失或为 0 时供前端展示互动量。"""
+    for stats in (_stats_dict(item),):
+        n = _douyin_stat_pick_positive(
+            stats,
+            "digg_count",
+            "diggCount",
+            "admire_count",
+            "admireCount",
+        )
+        if n is not None:
+            return n
+    return None
+
+
+def _probe_stream_content_length(url: str, session: requests.Session) -> int | None:
+    """对直链做 HEAD 或 Range 探测长度（抖音 CDN 有时 HEAD 无长度）。"""
+    try:
+        r = session.head(url, headers=_MOBILE_HEADERS, timeout=15, allow_redirects=True)
+        if r.status_code in (200, 206):
+            cl = r.headers.get("Content-Length")
+            if cl and str(cl).isdigit():
+                return int(cl)
+    except Exception:
+        pass
+    try:
+        r = session.get(
+            url,
+            headers={**_MOBILE_HEADERS, "Range": "bytes=0-0"},
+            timeout=15,
+            allow_redirects=True,
+            stream=True,
+        )
+        try:
+            if r.status_code == 206:
+                cr = r.headers.get("Content-Range") or ""
+                if "/" in cr:
+                    tail = cr.split("/")[-1].strip()
+                    if tail.isdigit():
+                        return int(tail)
+            cl = r.headers.get("Content-Length")
+            if cl and str(cl).isdigit():
+                return int(cl)
+        finally:
+            r.close()
+    except Exception:
+        pass
+    return None
+
+
+def _douyin_estimate_size_from_bitrate(video: dict, duration_sec: int) -> int | None:
+    """接口未返回文件大小时，用 bit_rate 列表中的峰值码率 × 时长估算体积（约值）。"""
+    if duration_sec <= 0:
+        return None
+    rates: list[int] = []
+    for br in video.get("bit_rate") or []:
+        if not isinstance(br, dict):
+            continue
+        n = br.get("bit_rate") or br.get("Bitrate")
+        if isinstance(n, (int, float)) and n > 0:
+            rates.append(int(n))
+    if not rates:
+        return None
+    bps = max(rates)
+    return int(bps * duration_sec / 8)
+
+
 def parse_douyin_video(url: str) -> dict:
     """Parse a Douyin URL and return video info in the same format as yt-dlp."""
     session = requests.Session()
@@ -244,12 +382,25 @@ def parse_douyin_video(url: str) -> dict:
         width = video.get("width", 0)
         quality = f"{height}p" if height else "720p"
 
+        view_count = _douyin_view_count(item)
+        like_count = _douyin_like_count(item)
+
+        dur_int = int(duration) if duration else 0
+        filesize = _probe_stream_content_length(no_watermark_url, session)
+        size_approx = False
+        if not filesize and dur_int > 0:
+            est = _douyin_estimate_size_from_bitrate(video, dur_int)
+            if est:
+                filesize = est
+                size_approx = True
+
         formats = [{
             "format_id": "douyin_nowm",
             "ext": "mp4",
             "resolution": f"{width}x{height}" if width and height else "unknown",
             "quality": quality,
-            "filesize": None,
+            "filesize": filesize,
+            "filesize_approx": size_approx,
             "has_video": True,
             "has_audio": True,
             "vcodec": "h264",
@@ -265,6 +416,8 @@ def parse_douyin_video(url: str) -> dict:
             "uploader": author,
             "webpage_url": f"https://www.douyin.com/video/{video_id}",
             "formats": formats,
+            "view_count": view_count,
+            "like_count": like_count,
             "_douyin": True,
         }
     finally:

@@ -1,0 +1,17 @@
+# freeVideo · 万能视频下载总结器
+
+> 面向中文用户的在线工具：粘贴视频链接即可解析信息，支持多平台高清/音频下载，并提供基于字幕的 AI 视频总结、对话问答与思维导图导出。官方网站：https://www.freevideo.com/
+
+## 首选入口
+
+- [万能视频下载总结器（首页）](https://www.freevideo.com/): 完整功能与使用说明；Web 应用需启用 JavaScript。
+
+## 站点地图与机器可读索引
+
+- [sitemap.xml](https://www.freevideo.com/sitemap.xml): 站点 URL 列表。
+- [robots.txt](https://www.freevideo.com/robots.txt): 爬虫抓取规则。
+- [llms-full.txt](https://www.freevideo.com/llms-full.txt): 面向 AI 与摘要工具的扩展事实说明（产品能力、边界与合规表述）。
+
+## Optional
+
+- 若上下文受限，可仅引用本文件blockquote中的定义与首选入口链接作为 freeVideo / 万能视频下载总结器的权威摘要。

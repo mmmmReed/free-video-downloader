@@ -1,44 +1,101 @@
 <script setup lang="ts">
-import { Check, X, Crown } from 'lucide-vue-next'
+import { ref, computed } from 'vue'
+import axios from 'axios'
+import { Check, X, Crown, Loader2 } from 'lucide-vue-next'
+import { createCheckoutSession } from '../api/billing'
+
+const props = defineProps<{
+  isLoggedIn: boolean
+  isVip?: boolean
+  vipUntil?: number | null
+}>()
+
+const vipExpiryText = computed(() => {
+  const t = props.vipUntil
+  if (!props.isVip || t == null) return ''
+  return new Date(t * 1000).toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+})
+
+const emit = defineEmits<{
+  openAuth: []
+}>()
 
 const plans = [
   {
     name: '免费版',
     price: '¥0',
     period: '永久免费',
-    desc: '满足基本下载需求',
+    desc: '下载不限；AI 总结有每日次数',
     features: [
-      { text: '每日 5 次下载', included: true },
-      { text: '最高 720P 画质', included: true },
-      { text: '标准下载速度', included: true },
+      { text: '视频解析与下载（不限）', included: true },
       { text: '1700+ 平台支持', included: true },
-      { text: '4K / 1080P 画质', included: false },
-      { text: '无限次下载', included: false },
-      { text: '批量下载', included: false },
-      { text: '视频总结 / 字幕翻译', included: false },
+      { text: '登录后每日 1 次 AI 总结', included: true },
+      { text: 'AI 问答（计入总结次数）', included: true },
+      { text: '¥9.9 VIP（30 天不限 AI）', included: false },
+      { text: 'Stripe 安全支付', included: false },
+      { text: '批量下载（规划中）', included: false },
+      { text: '字幕翻译（规划中）', included: false },
     ],
     cta: '免费使用',
     highlighted: false,
   },
   {
     name: 'VIP 会员',
-    price: '¥29',
-    period: '/月',
-    desc: '无限制，极速体验',
+    price: '¥9.9',
+    period: '/30 天',
+    desc: '单次购买 30 天权益，到期手动续费',
     features: [
-      { text: '无限次下载', included: true },
-      { text: '4K / 1080P 高清', included: true },
-      { text: '极速下载通道', included: true },
-      { text: '1700+ 平台支持', included: true },
-      { text: '批量下载', included: true },
-      { text: 'AI 视频总结', included: true },
-      { text: '字幕提取 + 翻译', included: true },
-      { text: '专属客服支持', included: true },
+      { text: 'AI 视频总结不限次数', included: true },
+      { text: 'AI 问答不限次数', included: true },
+      { text: '下载与解析保持不限', included: true },
+      { text: 'Stripe Checkout 安全收款', included: true },
+      { text: '邮箱登录后即可开通', included: true },
+      { text: '到期前不会自动扣款', included: true },
+      { text: '同一时段防止重复下单（幂等）', included: true },
+      { text: '专属客服（规划中）', included: false },
     ],
     cta: '立即开通',
     highlighted: true,
   },
 ]
+
+const checkoutLoading = ref(false)
+const checkoutError = ref('')
+
+async function onVipCheckout() {
+  checkoutError.value = ''
+  if (!props.isLoggedIn) {
+    emit('openAuth')
+    return
+  }
+  if (props.isVip) {
+    return
+  }
+  checkoutLoading.value = true
+  try {
+    const url = await createCheckoutSession()
+    window.location.href = url
+  } catch (e) {
+    if (axios.isAxiosError(e)) {
+      const d = e.response?.data as { detail?: string | unknown } | undefined
+      const detail = d?.detail
+      checkoutError.value =
+        typeof detail === 'string'
+          ? detail
+          : Array.isArray(detail)
+            ? detail.map((x: { msg?: string }) => x.msg).filter(Boolean).join('; ')
+            : '发起支付失败，请确认后端已配置 Stripe 环境变量'
+    } else {
+      checkoutError.value = '网络异常，请稍后重试'
+    }
+  } finally {
+    checkoutLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -49,7 +106,7 @@ const plans = [
           选择适合你的 <span class="text-primary">方案</span>
         </h2>
         <p class="text-text-secondary text-lg max-w-xl mx-auto">
-          免费版满足日常需求，VIP 解锁全部高级功能
+          下载不限；AI 总结需登录 — 免费每日 1 次，¥9.9 单次购买 30 天 VIP（Stripe，到期手动续费）
         </p>
       </div>
 
@@ -100,15 +157,34 @@ const plans = [
             </li>
           </ul>
 
+          <p v-if="checkoutError && plan.highlighted" class="text-red-600 text-sm mb-3 text-center">
+            {{ checkoutError }}
+          </p>
+
           <button
+            type="button"
+            :disabled="plan.highlighted ? checkoutLoading || isVip : false"
+            @click="plan.highlighted ? onVipCheckout() : undefined"
             :class="[
               'w-full py-3 font-semibold rounded-xl transition-all text-sm cursor-pointer active:scale-[0.99]',
               plan.highlighted
-                ? 'bg-gradient-to-r from-gold to-gold-dark text-white hover:shadow-lg hover:shadow-gold/30'
-                : 'bg-gray-100 text-text-secondary hover:bg-gray-200 hover:shadow-sm',
+                ? isVip
+                  ? 'bg-gray-100 text-text-secondary cursor-default border border-gray-200'
+                  : 'bg-gradient-to-r from-gold to-gold-dark text-white hover:shadow-lg hover:shadow-gold/30 disabled:opacity-60 disabled:cursor-not-allowed'
+                : 'bg-gray-100 text-text-secondary hover:bg-gray-200 hover:shadow-sm cursor-default',
             ]"
           >
-            {{ plan.cta }}
+            <span v-if="plan.highlighted && isVip" class="block text-center leading-snug">
+              <span class="text-gold-dark font-bold">当前已是 VIP</span>
+              <span v-if="vipExpiryText" class="block text-xs font-normal text-text-muted mt-1">
+                有效期至 {{ vipExpiryText }} · 到期后再来此续费
+              </span>
+            </span>
+            <span v-else-if="plan.highlighted && checkoutLoading" class="inline-flex items-center justify-center gap-2">
+              <Loader2 class="w-4 h-4 animate-spin" />
+              跳转 Stripe 中...
+            </span>
+            <span v-else>{{ plan.cta }}</span>
           </button>
         </div>
       </div>

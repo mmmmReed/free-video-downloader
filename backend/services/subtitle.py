@@ -1,9 +1,13 @@
 """Subtitle extraction service using yt-dlp."""
 
 import json
+import logging
+import os
 import re
 import requests
 from yt_dlp import YoutubeDL
+
+logger = logging.getLogger(__name__)
 
 from services.douyin import (
     _DEFAULT_HEADERS,
@@ -167,6 +171,22 @@ def _douyin_segments_from_utterances(data: dict) -> tuple[list[dict], str]:
     return segments, lang
 
 
+def _douyin_collect_inline_caption_dicts(video: dict) -> list[dict]:
+    """合并 camelCase / snake_case 下的字幕条目（抖音接口字段常混用）。"""
+    caps: list[dict] = []
+    for key in ("subtitleInfos", "subtitle_infos"):
+        lst = video.get(key)
+        if isinstance(lst, list):
+            caps.extend(c for c in lst if isinstance(c, dict))
+    cla = video.get("cla_info") or video.get("claInfo") or {}
+    if isinstance(cla, dict):
+        for key in ("caption_infos", "captionInfos"):
+            lst = cla.get(key)
+            if isinstance(lst, list):
+                caps.extend(c for c in lst if isinstance(c, dict))
+    return caps
+
+
 def _try_douyin_caption_segments(aweme: dict) -> dict | None:
     """Parse Douyin auto-caption JSON / cla / subtitleInfos when present on item."""
     cap_headers = {**_DEFAULT_HEADERS, "Referer": "https://www.douyin.com/"}
@@ -204,12 +224,9 @@ def _try_douyin_caption_segments(aweme: dict) -> dict | None:
                     }
 
     video = aweme.get("video") or {}
-    cla = video.get("cla_info") or {}
-    for cap in cla.get("caption_infos") or []:
-        if not isinstance(cap, dict):
-            continue
-        cap_url = cap.get("url")
-        if not cap_url:
+    for cap in _douyin_collect_inline_caption_dicts(video):
+        cap_url = cap.get("Url") or cap.get("url") or cap.get("URL")
+        if not cap_url or not isinstance(cap_url, str):
             continue
         fmt = (cap.get("Format") or cap.get("format") or "").lower()
         try:
@@ -224,37 +241,12 @@ def _try_douyin_caption_segments(aweme: dict) -> dict | None:
             segments = _parse_srt(content)
         segments = _deduplicate_segments(segments)
         if segments:
-            lang = cap.get("lang") or "zh"
-            full_text = "\n".join(
-                f"[{_format_timestamp(s['start'])}] {s['text']}" for s in segments
+            lang = (
+                cap.get("LanguageCodeName")
+                or cap.get("language_code_name")
+                or cap.get("lang")
+                or "zh"
             )
-            return {
-                "segments": segments,
-                "full_text": full_text,
-                "language": lang,
-                "source": "manual",
-            }
-
-    for cap in video.get("subtitleInfos") or []:
-        if not isinstance(cap, dict):
-            continue
-        cap_url = cap.get("Url") or cap.get("url")
-        if not cap_url:
-            continue
-        fmt = (cap.get("Format") or cap.get("format") or "").lower()
-        try:
-            resp = requests.get(cap_url, headers=cap_headers, timeout=30)
-            resp.raise_for_status()
-            content = resp.text
-        except Exception:
-            continue
-        if fmt == "webvtt" or "WEBVTT" in content[:40]:
-            segments = _parse_vtt(content)
-        else:
-            segments = _parse_srt(content)
-        segments = _deduplicate_segments(segments)
-        if segments:
-            lang = cap.get("LanguageCodeName") or cap.get("lang") or "zh"
             full_text = "\n".join(
                 f"[{_format_timestamp(s['start'])}] {s['text']}" for s in segments
             )
@@ -299,8 +291,55 @@ def _douyin_fallback_from_aweme(aweme: dict) -> dict | None:
         "segments": segments,
         "full_text": full_text,
         "language": "zh",
-        "source": "auto",
+        "source": "fallback_meta",
+        "quality_notice": (
+            "暂时拿不到这条视频的完整对白字幕，总结主要依据标题和简介，会显得比较短、也不够贴合画面。"
+            "很多抖音视频本身没有开放字幕，这与复制哪种链接无关；若仍想尽量对齐内容，可在抖音网页端打开同一视频看看是否有字幕。"
+        ),
     }
+
+
+def _subtitle_result_score(res: dict | None) -> int:
+    if not res:
+        return 0
+    segs = res.get("segments") or []
+    return len(segs) * 500 + len(res.get("full_text") or "")
+
+
+def _ytdlp_subtitle_extract(url: str) -> dict | None:
+    """仅用 yt-dlp 拉字幕（供抖音 canonical URL 二次尝试；失败返回 None）。"""
+    try:
+        info = _extract_sub_info(url, auto=False)
+        subs = info.get("subtitles", {})
+        req_subs = info.get("requested_subtitles") or {}
+        lang, sub_data, source = _pick_best_subtitle(subs, req_subs, "manual")
+
+        if not sub_data:
+            info = _extract_sub_info(url, auto=True)
+            auto_subs = info.get("automatic_captions", {})
+            req_subs = info.get("requested_subtitles") or {}
+            lang, sub_data, source = _pick_best_subtitle(auto_subs, req_subs, "auto")
+
+        if not sub_data:
+            return None
+
+        segments = _fetch_and_parse(sub_data)
+        segments = _deduplicate_segments(segments)
+        if not segments:
+            return None
+
+        full_text = "\n".join(
+            f"[{_format_timestamp(s['start'])}] {s['text']}" for s in segments
+        )
+        return {
+            "segments": segments,
+            "full_text": full_text,
+            "language": lang,
+            "source": source,
+        }
+    except Exception as e:
+        logger.info("yt-dlp 字幕跳过 %s: %s", url[:80], e)
+        return None
 
 
 def extract_douyin_subtitles(url: str) -> dict:
@@ -322,12 +361,28 @@ def extract_douyin_subtitles(url: str) -> dict:
     finally:
         session.close()
 
-    rich = _try_douyin_caption_segments(aweme)
-    if rich:
-        return rich
+    canonical = f"https://www.douyin.com/video/{video_id}"
 
-    # 抖音 yt-dlp 通常需 Cookie，且对部分页面 URL（如精选页 modal_id）报 Unsupported；
-    # 已有 iesdouyin 元数据后直接走文案兜底，不再调用 yt-dlp。
+    candidates: list[dict] = []
+    api_res = _try_douyin_caption_segments(aweme)
+    if api_res:
+        candidates.append(api_res)
+
+    # 部分视频仅在网页端暴露字幕；用规范视频页再试 yt-dlp（可能需本机 Cookie，失败则忽略）
+    yt_res = _ytdlp_subtitle_extract(canonical)
+    if yt_res:
+        candidates.append(yt_res)
+
+    best = None
+    best_score = 0
+    for c in candidates:
+        sc = _subtitle_result_score(c)
+        if sc > best_score:
+            best, best_score = c, sc
+
+    if best:
+        return best
+
     fallback = _douyin_fallback_from_aweme(aweme)
     if fallback:
         return fallback
@@ -532,6 +587,9 @@ def _extract_sub_info(url: str, auto: bool) -> dict:
         "quiet": True,
         "no_warnings": True,
     }
+    cf = os.getenv("YTDLP_COOKIES_FILE", "").strip()
+    if cf and os.path.isfile(cf):
+        ydl_opts["cookiefile"] = cf
     with YoutubeDL(ydl_opts) as ydl:
         return ydl.extract_info(url, download=False)
 

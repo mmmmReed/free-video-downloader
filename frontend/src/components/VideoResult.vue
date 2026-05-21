@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import {
   Clock,
   User,
+  Eye,
+  Heart,
   Download,
   Check,
   Loader2,
@@ -42,12 +44,39 @@ function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-function formatSize(bytes: number | null): string {
+function formatSize(bytes: number | null, approx?: boolean): string {
   if (!bytes) return '未知大小'
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+  let s: string
+  if (bytes < 1024 * 1024) s = `${(bytes / 1024).toFixed(1)} KB`
+  else if (bytes < 1024 * 1024 * 1024) s = `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  else s = `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+  return approx ? `约 ${s}` : s
 }
+
+function formatViewCount(n: number): string {
+  if (n >= 100000000) return `${(n / 100000000).toFixed(1)} 亿次播放`
+  if (n >= 10000) return `${(n / 10000).toFixed(1)} 万次播放`
+  return `${n.toLocaleString('zh-CN')} 次播放`
+}
+
+function formatLikeCount(n: number): string {
+  if (n >= 100000000) return `${(n / 100000000).toFixed(1)} 亿点赞`
+  if (n >= 10000) return `${(n / 10000).toFixed(1)} 万点赞`
+  return `${n.toLocaleString('zh-CN')} 点赞`
+}
+
+/** 抖音等对播放量脱敏时用点赞展示，避免「0 次播放」误导 */
+const engagementDisplay = computed(() => {
+  const vc = props.videoInfo.view_count
+  const lc = props.videoInfo.like_count
+  if (vc != null && vc > 0) {
+    return { icon: Eye, label: formatViewCount(vc) }
+  }
+  if (lc != null && lc > 0) {
+    return { icon: Heart, label: formatLikeCount(lc) }
+  }
+  return null
+})
 
 const progressPercent = computed(() => props.progress?.percentage ?? 0)
 </script>
@@ -88,6 +117,10 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
               <Clock class="w-4 h-4" />
               {{ formatDuration(videoInfo.duration) }}
             </span>
+            <span v-if="engagementDisplay" class="flex items-center gap-1.5">
+              <component :is="engagementDisplay.icon" class="w-4 h-4" />
+              {{ engagementDisplay.label }}
+            </span>
           </div>
         </div>
       </div>
@@ -123,7 +156,9 @@ const progressPercent = computed(() => props.progress?.percentage ?? 0)
                 class="block text-sm font-medium leading-snug"
                 :class="selectedFormat?.format_id === fmt.format_id ? 'text-primary' : 'text-text'"
               >{{ fmt.label }}</span>
-              <span class="mt-0.5 block text-xs text-text-secondary">{{ formatSize(fmt.filesize) }}</span>
+              <span class="mt-0.5 block text-xs text-text-secondary">{{
+                formatSize(fmt.filesize, fmt.filesize_approx)
+              }}</span>
             </span>
           </button>
         </div>

@@ -1,14 +1,17 @@
-import axios from 'axios'
+import { getApiBase } from './base'
+import { http } from './http'
 import type { SubtitleResponse, SummarizeStreamChunk, ChatStreamChunk, ChatMessage } from '../types/summary'
 
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 120000,
-})
-
 export async function fetchSubtitle(url: string): Promise<SubtitleResponse> {
-  const { data } = await api.post<SubtitleResponse>('/subtitle', { url })
+  const { data } = await http.post<SubtitleResponse>('/subtitle', { url })
   return data
+}
+
+function summarizeAuthHeaders(): Record<string, string> {
+  const t = localStorage.getItem('auth_token')
+  const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (t) h.Authorization = `Bearer ${t}`
+  return h
 }
 
 export function subscribeSummarize(
@@ -20,9 +23,9 @@ export function subscribeSummarize(
 ): () => void {
   const controller = new AbortController()
 
-  fetch('/api/summarize', {
+  fetch(`${getApiBase()}/summarize`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: summarizeAuthHeaders(),
     body: JSON.stringify({
       url,
       subtitle_text: subtitleText,
@@ -33,7 +36,14 @@ export function subscribeSummarize(
     .then(async (response) => {
       if (!response.ok) {
         const errBody = await response.json().catch(() => null)
-        onError(errBody?.detail || `请求失败 (${response.status})`)
+        const d = errBody?.detail
+        const msg =
+          typeof d === 'string'
+            ? d
+            : Array.isArray(d)
+              ? d.map((x: { msg?: string }) => x.msg).filter(Boolean).join('; ')
+              : `请求失败 (${response.status})`
+        onError(msg)
         return
       }
 
@@ -90,9 +100,9 @@ export function subscribeChat(
 ): () => void {
   const controller = new AbortController()
 
-  fetch('/api/chat', {
+  fetch(`${getApiBase()}/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: summarizeAuthHeaders(),
     body: JSON.stringify({
       subtitle_text: subtitleText,
       video_title: videoTitle,
@@ -104,7 +114,14 @@ export function subscribeChat(
     .then(async (response) => {
       if (!response.ok) {
         const errBody = await response.json().catch(() => null)
-        onError(errBody?.detail || `请求失败 (${response.status})`)
+        const d = errBody?.detail
+        const msg =
+          typeof d === 'string'
+            ? d
+            : Array.isArray(d)
+              ? d.map((x: { msg?: string }) => x.msg).filter(Boolean).join('; ')
+              : `请求失败 (${response.status})`
+        onError(msg)
         return
       }
 

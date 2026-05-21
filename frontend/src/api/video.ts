@@ -1,18 +1,14 @@
-import axios from 'axios'
+import { getApiBase } from './base'
+import { http } from './http'
 import type { ParseResponse, DownloadResponse, ProgressData } from '../types/video'
 
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 60000,
-})
-
 export async function parseVideo(url: string): Promise<ParseResponse> {
-  const { data } = await api.post<ParseResponse>('/parse', { url })
+  const { data } = await http.post<ParseResponse>('/parse', { url })
   return data
 }
 
 export async function startDownload(url: string, formatId: string): Promise<DownloadResponse> {
-  const { data } = await api.post<DownloadResponse>('/download', {
+  const { data } = await http.post<DownloadResponse>('/download', {
     url,
     format_id: formatId,
   })
@@ -24,7 +20,8 @@ export function subscribeProgress(
   onProgress: (data: ProgressData) => void,
   onError: (error: string) => void
 ): () => void {
-  const eventSource = new EventSource(`/api/progress/${taskId}`)
+  const eventSource = new EventSource(`${getApiBase()}/progress/${taskId}`)
+
 
   eventSource.onmessage = (event) => {
     try {
@@ -48,5 +45,5 @@ export function subscribeProgress(
 }
 
 export function getFileUrl(taskId: string): string {
-  return `/api/file/${taskId}`
+  return `${getApiBase()}/file/${taskId}`
 }

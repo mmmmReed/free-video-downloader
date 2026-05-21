@@ -45,6 +45,9 @@ def parse_video(url: str) -> dict:
         "no_warnings": True,
         "skip_download": True,
     }
+    cf = os.getenv("YTDLP_COOKIES_FILE", "").strip()
+    if cf and os.path.isfile(cf):
+        ydl_opts["cookiefile"] = cf
     with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         info = ydl.sanitize_info(info)
@@ -88,6 +91,13 @@ def parse_video(url: str) -> dict:
 
     formats.sort(key=lambda x: x.get("tbr") or 0, reverse=True)
 
+    vc = info.get("view_count")
+    if vc is None:
+        vc = info.get("concurrent_view_count")
+    view_count = None
+    if isinstance(vc, (int, float)) and vc >= 0:
+        view_count = int(vc)
+
     return {
         "title": info.get("title", ""),
         "thumbnail": info.get("thumbnail", ""),
@@ -95,6 +105,7 @@ def parse_video(url: str) -> dict:
         "uploader": info.get("uploader", ""),
         "webpage_url": info.get("webpage_url", ""),
         "formats": formats,
+        "view_count": view_count,
     }
 
 
@@ -155,6 +166,7 @@ def get_download_options(url: str) -> dict:
             "quality": f["quality"],
             "resolution": f["resolution"],
             "filesize": f["filesize"],
+            "filesize_approx": bool(f.get("filesize_approx")),
             "label": f"{f['quality']} ({f['ext']})",
         } for f in raw["formats"]]
         return {
@@ -164,6 +176,8 @@ def get_download_options(url: str) -> dict:
             "uploader": raw["uploader"],
             "webpage_url": raw["webpage_url"],
             "formats": combined,
+            "view_count": raw.get("view_count"),
+            "like_count": raw.get("like_count"),
             "_douyin": True,
         }
 
@@ -176,6 +190,7 @@ def get_download_options(url: str) -> dict:
         "uploader": raw["uploader"],
         "webpage_url": raw["webpage_url"],
         "formats": combined,
+        "view_count": raw.get("view_count"),
     }
 
 

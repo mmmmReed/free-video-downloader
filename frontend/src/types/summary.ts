@@ -8,7 +8,9 @@ export interface SubtitleData {
   segments: SubtitleSegment[]
   full_text: string
   language: string
-  source: 'manual' | 'auto' | ''
+  source: 'manual' | 'auto' | 'fallback_meta' | ''
+  /** 后端提示：如抖音仅拿到简介文案时的说明 */
+  quality_notice?: string
   error?: string
 }
 
